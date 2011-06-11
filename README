@@ -1,0 +1,15 @@
+nl6cl allows you instantly to be connected to 6bone via the Native LABS infrastructure.
+Native LABS offer free Tunnel Broker IPv6 services.
+
+First of all, register to the website http://www.nativelabs.org/
+And please make sure that you have set up device, username and password in the /etc/nl6cl.conf file.
+ 
+nl6cl is free software; you can redistribute it and/or modify it under the terms of the GNU
+General Public License as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.See the GNU General Public License for more details.
+
+For more information visit the project's web site at:
+http://www.nativelabs.org/downloads/
+
+have fun!
+
