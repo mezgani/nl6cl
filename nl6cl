@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+""" Native LABS IPv6 Tunnel Broker set client is a simple python robot that will,
+    update client information into database, not yet a webservice.
+    Licensed under GPL"""               
+
+import httplib, sys, string, re, os, simplejson, ifconfig
+
+class Nl6cl:
+    """ Nl6cl is the robot class Check for credentials from /etc/nl6cl.conf and do some 
+    some get and post into nativelabs.org website"""
+   
+    def __init__(self, dns):
+	self.config             = "/etc/nl6cl.conf"
+        self.tunnel_name        = self.openfile()[1]
+        self.dns                = dns
+	self.username           = self.openfile()[2]
+	self.password           = self.openfile()[3]
+	self.interface          = self.openfile()[0]
+        self.address            = ifconfig.ifconfig(self.interface) 
+
+    def post(self, host, selector, body, cookie):
+        """ Post method that will update data """
+       
+	h = httplib.HTTP(host)
+        h.putrequest('POST', selector)
+        h.putheader('HOST', host)
+        h.putheader('User-Agent', "Mozilla/5.0 (Windows; U; Windows NT 5.1; fr; rv:1.8.1.9) Gecko/20071025 Firefox/2.0.0.9")
+        h.putheader('Accept', "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5")
+        h.putheader('Accept-Language', "fr,fr-fr;q=0.8,en-us;q=0.5,en;q=0.3")
+        h.putheader('Accept-Encoding', "gzip,deflate")
+        h.putheader('Accept-Charset', "ISO-8859-1,utf-8;q=0.7,*;q=0.7")
+        h.putheader('Keep-Alive', '300')
+        h.putheader('Connection', "keep-alive")
+        h.putheader('Referer', "")
+        h.putheader('content-type', "application/x-www-form-urlencoded")
+        h.putheader('content-length', str(len(body)))
+        h.endheaders()
+        h.send(body)
+        errcode, errmsg, headers = h.getreply()
+	return h.file.read()
+         
+
+ 
+    def request(self):
+	"""Send method send data to Native LABS website, and set the local end point tunnel"""
+        try:
+            auth   = "username="+self.username+"&password="+self.password
+            value  = self.post("www.nativelabs.org","/tunnel/services.php",auth, '')
+            data   = simplejson.loads(value)
+            dico   = data['posts'][0]['post']
+            body   = auth + "&client_4="+self.address+"&tunnel_description="+self.tunnel_name+"&rdns="+self.dns
+
+            self.post("www.nativelabs.org","/tunnel/services.php", body, '')
+            cmd = "/usr/share/nl6cl/nl6cl.sh "+dico['server_4']+" "+self.address+" "+dico['client_6']
+            os.system(cmd)
+ 
+        except Exception, e:
+            sys.stderr.write("request #0 failed: %d (%s)\n" % (e.errno, e.strerror))
+            sys.exit(1)
+            
+        
+    def openfile(self):
+        """Openfile Check for username, password, interface and tunnel name 
+        from /etc/nl6cl.conf """
+        try: 
+            fs = open(self.config, 'r')
+        except IOError, e: 
+            sys.stderr.write("open file #1 failed: %d (%s)\n" % (e.errno, e.strerror))
+            sys.exit(1)
+            
+        for data in fs:
+            if not data or data=='': break
+            if data == '#': continue
+            if data.find("interface=") == 0:
+                interface = re.findall(re.compile('interface="(\w+)"'), data)
+            if data.find("tunnel_name") == 0:
+                tunnel_name  = re.findall(re.compile('tunnel_name="(\w+)"'), data)
+            if data.find("username") == 0:
+                username  = re.findall(re.compile('username="(\w+)"'), data)
+            if data.find("password=") == 0:
+                password  = re.findall(re.compile('password="(\w+)"'), data) 
+       
+        fs.close()    
+        return interface[0], tunnel_name[0], username[0], password[0]
+
+    
+                
+if __name__=="__main__":
+	if not os.geteuid()==0:
+		sys.exit("Only root can run this script")
+
+	if len(sys.argv) != 1:
+		sys.stderr.write("Usage: %s" % sys.argv[0])
+                sys.exit(2)
+        
+        try:
+            if os.fork() > 0: os._exit(0)
+        
+        except OSError, error:
+            print 'fork #1 failed: %d (%s)' % (error.errno, error.strerror)
+            os._exit(1)
+            os.chdir('/')
+            os.setsid()
+            os.umask(0)
+        try:
+            pid = os.fork()
+            if pid > 0:
+                    #print 'Daemon PID %d' % pid
+                os._exit(0)
+        except OSError, error:
+            print 'fork #2 failed: %d (%s)' % (error.errno, error.strerror)
+            os._exit(1)
+            
+	sms=Nl6cl("")
+	sms.request()
+	
