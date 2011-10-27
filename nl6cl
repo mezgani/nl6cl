@@ -12,11 +12,11 @@ class Nl6cl:
    
     def __init__(self, dns):
 	self.config             = "/etc/nl6cl.conf"
+	self.interface          = self.openfile()[0]
         self.tunnel_name        = self.openfile()[1]
-        self.dns                = dns
 	self.username           = self.openfile()[2]
 	self.password           = self.openfile()[3]
-	self.interface          = self.openfile()[0]
+        self.dns_server         = dns 
         self.address            = ifconfig.ifconfig(self.interface) 
 
     def post(self, host, selector, body, cookie):
@@ -49,7 +49,7 @@ class Nl6cl:
             value  = self.post("www.nativelabs.org","/tunnel/services.php",auth, '')
             data   = simplejson.loads(value)
             dico   = data['posts'][0]['post']
-            body   = auth + "&client_4="+self.address+"&tunnel_description="+self.tunnel_name+"&rdns="+self.dns
+            body   = auth + "&client_4="+self.address+"&tunnel_description="+self.tunnel_name+"&rdns="+self.dns_server
 
             self.post("www.nativelabs.org","/tunnel/services.php", body, '')
             cmd = "/usr/share/nl6cl/nl6cl.sh "+dico['server_4']+" "+self.address+" "+dico['client_6']
@@ -80,8 +80,12 @@ class Nl6cl:
                 username  = re.findall(re.compile('username="(\w+)"'), data)
             if data.find("password=") == 0:
                 password  = re.findall(re.compile('password="(\w+)"'), data) 
-       
+            if data.find("dns_server=") == 0:
+                dns_server = re.findall(re.compile('dns_server="(\w+)"'), data)
+	        print dns_server
+		sys.exit()	
         fs.close()    
+        #return interface[0], tunnel_name[0], username[0], password[0], dns_server[0]
         return interface[0], tunnel_name[0], username[0], password[0]
 
     
@@ -112,6 +116,6 @@ if __name__=="__main__":
             print 'fork #2 failed: %d (%s)' % (error.errno, error.strerror)
             os._exit(1)
             
-	sms=Nl6cl("")
+	sms=Nl6cl("2001:470:9b36:1::1")
 	sms.request()
 	
